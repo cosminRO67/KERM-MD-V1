@@ -11,7 +11,7 @@ YT: KermHackTools
 Github: Kgtech-cmr
 */
 
-const config = require('../config');
+/*const config = require('../config');
 const { cmd, commands } = require('../command');
 const { downloadMediaMessage } = require('../lib/msg');
 
@@ -54,4 +54,121 @@ cmd({
         console.error("Erreur lors de la sauvegarde :", error);
         reply("❌ Une erreur est survenue lors de la sauvegarde du média.");
     }
+});*/
+
+
+const axios = require('axios');
+const config = require('../config');
+const { cmd, commands } = require('../command');
+const { downloadMediaMessage } = require('../lib/msg');
+const fs = require("fs");
+/*
+cmd({
+    pattern: "save",
+    desc: "Envoie le message multimédia sauvegardé dans le PM du bot.",
+    category: "owner",
+    react: "💾",
+    filename: __filename
+}, async (conn, mek, m, { from, quoted, reply, botNumber }) => {
+    try {
+        if (!quoted) return reply("❌");
+        
+        const mime = quoted.type;
+        let ext, mediaType;
+        
+        if (mime === "imageMessage") {
+            ext = "jpg";
+            mediaType = "image";
+        } else if (mime === "videoMessage") {
+            ext = "mp4";
+            mediaType = "video";
+        } else if (mime === "audioMessage") {
+            ext = "mp3";
+            mediaType = "audio";
+        } else if (mime === "documentMessage") {
+            ext = quoted.msg.fileName.split('.').pop();
+            mediaType = "document";
+        } else {
+            return reply("❌.");
+        }
+
+        var buffer = await quoted.download();
+        var filePath = `${Date.now()}.${ext}`;
+
+        fs.writeFileSync(filePath, buffer); 
+
+        let messageOptions = {};
+        messageOptions[mediaType] = fs.readFileSync(filePath);
+
+        if (mediaType === "document") {
+            messageOptions.mimetype = quoted.msg.mimetype;
+            messageOptions.fileName = quoted.msg.fileName;
+        } else if (mediaType === "audio") {
+            messageOptions.mimetype = 'audio/mp4';
+            messageOptions.ptt = quoted.msg.ptt || false;
+        } else {
+            messageOptions.caption = quoted.msg.caption || '';
+        }
+
+        // Récupération du JID du bot
+        const botJid = conn.user.jid;
+        console.log("JID du bot :", botJid);
+
+        // Envoi dans le PM du bot en utilisant son JID
+        await conn.sendMessage(botJid, messageOptions);
+        reply("✅");
+        
+        fs.unlinkSync(filePath);
+
+    } catch (error) {
+        console.error("Erreur lors de la sauvegarde :", error);
+        reply("❌ Une erreur est survenue lors de la sauvegarde du média.");
+    }
+});
+*/
+
+cmd({
+  pattern: "save",
+  desc: "Save a status/photo/video and send it to your private chat (Owner only).",
+  category: "utility",
+  filename: __filename,
+}, async (conn, mek, m, { isOwner, reply, quoted }) => {
+  if (!isOwner) return reply("❌ You are not the owner!");
+
+  try {
+    if (!quoted) {
+      return reply("❌ Please reply to a status, photo or video message to save it.");
+    }
+    
+    let mime = (quoted.msg || quoted).mimetype || "";
+    let mediaType = "";
+    if (mime.startsWith("image")) {
+      mediaType = "image";
+    } else if (mime.startsWith("video")) {
+      mediaType = "video";
+    } else if (mime.startsWith("audio")) {
+      mediaType = "audio";
+    } else {
+      return reply("❌ Unsupported media type. Please reply to a status, photo, or video message.");
+    }
+    
+    const mediaBuffer = await quoted.download();
+    if (!mediaBuffer) return reply("❌ Failed to download the media.");
+    
+    let messageOptions = {};
+    if (mediaType === "image") {
+      messageOptions = { image: mediaBuffer };
+    } else if (mediaType === "video") {
+      messageOptions = { video: mediaBuffer, mimetype: 'video/mp4' };
+    } else if (mediaType === "audio") {
+      messageOptions = { audio: mediaBuffer, mimetype: 'audio/mpeg' };
+    }
+    
+    // Send the media directly to the owner's private chat (m.sender)
+    await conn.sendMessage(m.sender, messageOptions);
+    
+  } catch (error) {
+    console.error("Error in save command:", error);
+    reply("❌ An error occurred while saving the media.");
+  }
 });
